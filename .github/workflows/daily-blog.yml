@@ -1,0 +1,87 @@
+name: Daily Blog Generator
+
+on:
+  schedule:
+    - cron: '0 5 * * *' # Runs every day at 05:00 UTC
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: "Topic/prompt for the blog article"
+        default: "Education trends in Germany"
+        required: false
+
+jobs:
+  run-generator:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run blog generator
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+        run: |
+          PROMPT="${{ github.event.inputs.prompt }}"
+          if [ -z "$PROMPT" ]; then
+            PROMPT="Education trends in Germany"
+          fi
+          python main.py "$PROMPT"
+name: Daily Blog Generator
+
+on:
+  schedule:
+    - cron: '0 5 * * *' # Runs every day at 05:00 UTC
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: "Topic/prompt for the blog article"
+        default: "Education trends in Germany"
+        required: false
+
+jobs:
+  run-generator:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run blog generator
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+        run: |
+          PROMPT="${{ github.event.inputs.prompt }}"
+          if [ -z "$PROMPT" ]; then
+            PROMPT="Education trends in Germany"
+          fi
+          python main.py "$PROMPT"
+
