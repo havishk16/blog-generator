@@ -33,11 +33,11 @@ class BlogGenerator:
         self.model = os.getenv("OPENAI_MODEL", "gpt-4")
         
         # Email configuration (optional)
-        self.smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-        self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
+        self.smtp_server = os.getenv("SMTP_SERVER") or "smtp.gmail.com"
+        self.smtp_port = int(os.getenv("SMTP_PORT") or "587")
         self.email_user = os.getenv("EMAIL_USER")
         self.email_password = os.getenv("EMAIL_PASSWORD")
-        self.email_from = os.getenv("EMAIL_FROM", self.email_user)
+        self.email_from = os.getenv("EMAIL_FROM") or self.email_user
         self.email_enabled = all(
             [self.smtp_server, self.smtp_port, self.email_user, self.email_password, self.email_from]
         )
