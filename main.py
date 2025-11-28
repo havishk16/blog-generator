@@ -17,6 +17,7 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from datetime import datetime
+from s3_handler import S3Handler
 
 # Load environment variables
 load_dotenv()
@@ -37,12 +38,15 @@ class BlogGenerator:
         self.smtp_port = int(os.getenv("SMTP_PORT") or "587")
         self.email_user = os.getenv("EMAIL_USER")
         self.email_password = os.getenv("EMAIL_PASSWORD")
-        self.email_from = os.getenv("EMAIL_FROM") or self.email_user
+        self.email_from = self.email_user
         self.email_enabled = all(
             [self.smtp_server, self.smtp_port, self.email_user, self.email_password, self.email_from]
         )
         if not self.email_enabled:
             print("⚠️  Email credentials not found. Email sending is disabled.")
+        
+        # S3 configuration (optional)
+        self.s3_handler = S3Handler()
     
     def generate_blog_article(self, prompt: str) -> str:
         """
@@ -235,7 +239,7 @@ Blog Generator
     
     def process(self, prompt: str, email_list_file: str = "email_list.txt"):
         """
-        Main processing function: generates article, creates PDF, and sends emails
+        Main processing function: generates article, creates PDF, uploads to S3, and sends emails
         
         Args:
             prompt: The topic/prompt for the blog article
@@ -258,36 +262,65 @@ Blog Generator
         self.create_pdf(article, pdf_filename, title=prompt)
         print("✓ PDF created successfully")
         
+        # Upload to S3 if configured
+        s3_url = None
+        if self.s3_handler.enabled:
+            print("\nUploading PDF to S3...")
+            s3_url = self.s3_handler.upload_file(pdf_filename)
+            if s3_url:
+                print(f"✓ S3 URL: {s3_url}")
+        
         if not self.email_enabled:
-            print("Email credentials not configured, skipping email delivery.")
-            print(f"PDF saved as: {pdf_filename}")
+            print("\nEmail credentials not configured, skipping email delivery.")
+            print(f"PDF saved locally as: {pdf_filename}")
+            if s3_url:
+                print(f"PDF available at: {s3_url}")
             return pdf_filename
 
         # Load email list and send
         emails = self.load_email_list(email_list_file)
         if not emails:
-            print(f"No email addresses found in {email_list_file}")
-            print(f"PDF saved as: {pdf_filename}")
-            return
+            print(f"\nNo email addresses found in {email_list_file}")
+            print(f"PDF saved locally as: {pdf_filename}")
+            if s3_url:
+                print(f"PDF available at: {s3_url}")
+            return pdf_filename
         
         print(f"\nSending emails to {len(emails)} recipients...")
         for email in emails:
             self.send_email(email, pdf_filename, subject=f"Blog Article: {prompt}")
         
-        print(f"\n✓ Process completed! PDF saved as: {pdf_filename}")
+        print(f"\n✓ Process completed!")
+        print(f"PDF saved locally as: {pdf_filename}")
+        if s3_url:
+            print(f"PDF available at: {s3_url}")
+        
+        return pdf_filename
 
 
 def main():
     """Main entry point"""
     import sys
+    from topic_manager import TopicManager
     
-    if len(sys.argv) < 2:
-        print("Usage: python main.py <prompt> [email_list_file]")
-        print("\nExample: python main.py 'The Future of Artificial Intelligence'")
-        sys.exit(1)
-    
-    prompt = sys.argv[1]
-    email_list_file = sys.argv[2] if len(sys.argv) > 2 else "email_list.txt"
+    # Check if a prompt was provided as argument
+    if len(sys.argv) >= 2:
+        # Use provided prompt
+        prompt = sys.argv[1]
+        email_list_file = sys.argv[2] if len(sys.argv) > 2 else "email_list.txt"
+    else:
+        # Use topic manager to get next topic
+        print("No topic provided, using topic manager...")
+        topic_manager = TopicManager()
+        prompt = topic_manager.get_next_topic()
+        
+        if not prompt:
+            print("Error: No topics available. Please add topics to topics.txt")
+            print("\nUsage: python main.py [prompt] [email_list_file]")
+            print("  If no prompt is provided, the next topic from topics.txt will be used.")
+            sys.exit(1)
+        
+        email_list_file = "email_list.txt"
     
     try:
         generator = BlogGenerator()

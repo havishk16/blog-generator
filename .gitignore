@@ -29,6 +29,13 @@ wheels/
 # PDF outputs
 *.pdf
 
+# Topic rotation state (tracked in GitHub Actions only)
+.last_topic_index
+
+# Google Sheets credentials
+service-account.json
+*-service-account.json
+
 # IDE
 .vscode/
 .idea/

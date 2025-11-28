@@ -35,10 +35,26 @@ jobs:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          GOOGLE_SHEET_CSV_URL: ${{ secrets.GOOGLE_SHEET_CSV_URL }}
         run: |
           PROMPT="${{ github.event.inputs.prompt }}"
           if [ -z "$PROMPT" ]; then
-            PROMPT="Education trends in Germany"
+            # No manual prompt provided, use topic manager
+            python main.py
+          else
+            # Use manual prompt
+            python main.py "$PROMPT"
           fi
-          python main.py "$PROMPT"
+      
+      - name: Commit and push topic index
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .last_topic_index
+          git diff --staged --quiet || git commit -m "Update topic index [skip ci]"
+          git push
 
