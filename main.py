@@ -245,51 +245,59 @@ Format the article with markdown-style headings (## for main headings, ### for s
         
         Args:
             recipient: Email address of the recipient
-            pdf_path: Path to the PDF file
+            pdf_path: Path to the PDF file (optional if s3_url is provided)
             subject: Email subject line
             s3_url: Optional S3 URL for cloud access to the PDF
         """
         if not self.email_enabled:
             raise RuntimeError("Email sending is disabled because SMTP credentials are missing.")
-        try:
-            msg = MIMEMultipart()
-            msg['From'] = self.email_from
-            msg['To'] = recipient
-            msg['Subject'] = subject
-            
-            # Build email body with optional S3 link
+        
+        msg = MIMEMultipart()
+        msg['From'] = self.email_from
+        msg['To'] = recipient
+        msg['Subject'] = subject
+        
+        # Build email body with optional S3 link
+        pdf_attached = False
+        if s3_url:
+            body = f"Hello,\n\nYour blog article is ready!\n\nYou can access the PDF online at:\n{s3_url}\n"
+        else:
             body = "Hello,\n\nPlease find attached the blog article you requested.\n"
-            
-            if s3_url:
-                body += f"\nYou can also access the PDF online at:\n{s3_url}\n"
-            
-            body += "\nBest regards,\nBlog Generator\n"
-            
-            msg.attach(MIMEText(body, 'plain'))
-            
-            # Attach PDF
-            with open(pdf_path, 'rb') as attachment:
-                part = MIMEBase('application', 'octet-stream')
-                part.set_payload(attachment.read())
-            
-            encoders.encode_base64(part)
-            part.add_header(
-                'Content-Disposition',
-                f'attachment; filename= {os.path.basename(pdf_path)}'
-            )
-            msg.attach(part)
-            
-            # Send email
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-            server.starttls()
-            server.login(self.email_user, self.email_password)
-            text = msg.as_string()
-            server.sendmail(self.email_from, recipient, text)
-            server.quit()
-            
-            print(f"✓ Email sent successfully to {recipient}")
-        except Exception as e:
-            print(f"✗ Error sending email to {recipient}: {str(e)}")
+        
+        body += "\nBest regards,\nBlog Generator\n"
+        msg.attach(MIMEText(body, 'plain'))
+        
+        # Attach PDF if file exists
+        if os.path.exists(pdf_path):
+            try:
+                with open(pdf_path, 'rb') as attachment:
+                    part = MIMEBase('application', 'octet-stream')
+                    part.set_payload(attachment.read())
+                
+                encoders.encode_base64(part)
+                part.add_header(
+                    'Content-Disposition',
+                    f'attachment; filename= {os.path.basename(pdf_path)}'
+                )
+                msg.attach(part)
+                pdf_attached = True
+            except Exception as e:
+                print(f"⚠️  Could not attach PDF file: {str(e)}")
+                if not s3_url:
+                    raise RuntimeError(f"Cannot send email: PDF file not found and no S3 URL available")
+        elif not s3_url:
+            raise RuntimeError(f"Cannot send email: PDF file '{pdf_path}' not found and no S3 URL available")
+        
+        # Send email
+        server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+        server.starttls()
+        server.login(self.email_user, self.email_password)
+        text = msg.as_string()
+        server.sendmail(self.email_from, recipient, text)
+        server.quit()
+        
+        attachment_info = " with PDF attachment" if pdf_attached else " with S3 link"
+        print(f"✓ Email sent successfully to {recipient}{attachment_info}")
     
     def process(self, prompt: str, email_list_file: str = "email_list.txt"):
         """
