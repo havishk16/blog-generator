@@ -88,7 +88,7 @@ def generate_blog():
         if email_list and generator.email_enabled:
             for email in email_list:
                 try:
-                    generator.send_email(email, pdf_filename, subject=f"Blog Article: {topic}")
+                    generator.send_email(email, pdf_filename, subject=f"Blog Article: {topic}", s3_url=s3_url)
                     emails_sent.append(email)
                 except Exception as e:
                     print(f"Error sending email to {email}: {str(e)}")

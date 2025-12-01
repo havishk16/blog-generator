@@ -239,7 +239,7 @@ Format the article with markdown-style headings (## for main headings, ### for s
         
         return emails
     
-    def send_email(self, recipient: str, pdf_path: str, subject: str = "Your Blog Article"):
+    def send_email(self, recipient: str, pdf_path: str, subject: str = "Your Blog Article", s3_url: str = None):
         """
         Send the PDF via email
         
@@ -247,6 +247,7 @@ Format the article with markdown-style headings (## for main headings, ### for s
             recipient: Email address of the recipient
             pdf_path: Path to the PDF file
             subject: Email subject line
+            s3_url: Optional S3 URL for cloud access to the PDF
         """
         if not self.email_enabled:
             raise RuntimeError("Email sending is disabled because SMTP credentials are missing.")
@@ -256,13 +257,14 @@ Format the article with markdown-style headings (## for main headings, ### for s
             msg['To'] = recipient
             msg['Subject'] = subject
             
-            body = f"""Hello,
-
-Please find attached the blog article you requested.
-
-Best regards,
-Blog Generator
-"""
+            # Build email body with optional S3 link
+            body = "Hello,\n\nPlease find attached the blog article you requested.\n"
+            
+            if s3_url:
+                body += f"\nYou can also access the PDF online at:\n{s3_url}\n"
+            
+            body += "\nBest regards,\nBlog Generator\n"
+            
             msg.attach(MIMEText(body, 'plain'))
             
             # Attach PDF
@@ -340,7 +342,7 @@ Blog Generator
         
         print(f"\nSending emails to {len(emails)} recipients...")
         for email in emails:
-            self.send_email(email, pdf_filename, subject=f"Blog Article: {prompt}")
+            self.send_email(email, pdf_filename, subject=f"Blog Article: {prompt}", s3_url=s3_url)
         
         print(f"\n✓ Process completed!")
         print(f"PDF saved locally as: {pdf_filename}")
