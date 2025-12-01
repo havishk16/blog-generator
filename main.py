@@ -58,31 +58,83 @@ class BlogGenerator:
         Returns:
             The generated blog article text
         """
-        system_prompt = """You are a professional blog writer. Write a well-structured, engaging blog article 
-        on the given topic. The article should be comprehensive, informative, and well-formatted with:
-        - A compelling title
-        - An introduction
-        - Multiple sections with clear headings
-        - A conclusion
-        
-        Format the article with markdown-style headings (## for main headings, ### for subheadings).
-        Make the article at least 1000 words long."""
+        # Try to load custom prompt from frame.txt
+        system_prompt = self._load_prompt_template()
         
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Write a blog article about: {prompt}"}
+                    {"role": "user", "content": f"Topic: {prompt}\nAudience: General readers interested in the topic\nGenerate the blog following the system instructions."}
                 ],
                 temperature=0.7,
-                max_tokens=2000
+                max_tokens=3000
             )
             
             article = response.choices[0].message.content
             return article
         except Exception as e:
             raise Exception(f"Error generating blog article: {str(e)}")
+    
+    def _load_prompt_template(self) -> str:
+        """
+        Load prompt template from frame.txt if it exists, otherwise use default
+        
+        Returns:
+            System prompt string
+        """
+        frame_file = "frame.txt"
+        
+        if os.path.exists(frame_file):
+            try:
+                with open(frame_file, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if content:
+                        print("✓ Using custom prompt template from frame.txt")
+                        return content
+            except Exception as e:
+                print(f"⚠️  Error reading frame.txt: {str(e)}, using default prompt")
+        
+        # Default prompt if frame.txt doesn't exist or is empty
+        print("✓ Using default prompt template")
+        return """You are an expert-level writer who specializes in creating authoritative, well-researched, and polished professional blogs. Follow these instructions carefully:
+
+Topic: {topic}
+
+Goal:
+- Explain the topic with clarity and depth
+- Provide original insights, not generic filler
+- Use real facts or credible reasoning—never invent data
+- Challenge assumptions and add expert-level commentary
+
+Tone & Style:
+- Professional, concise, confident
+- No fluff, no motivational padding
+- No clichés or obvious statements
+- Short, punchy sentences with tight logic
+- Maintain a human, analytical voice
+
+Structure:
+- Strong, problem-focused introduction
+- Clear, non-generic headings
+- Use real examples when they strengthen the argument
+- Include at least one unconventional insight
+- Provide actionable takeaways
+- Conclusion must reinforce the central argument
+
+Depth & Constraints:
+- Write at expert depth—assume an intelligent reader
+- Target 900–1400 words
+- Avoid surface-level summaries
+- Ensure logical narrative arc
+
+Quality Rules:
+- No fake stats, sources, or invented research
+- No repetition, filler, or vague statements
+- Flow and quality must match top-tier publications
+
+Format the article with markdown-style headings (## for main headings, ### for subheadings)."""
     
     def create_pdf(self, article: str, output_path: str, title: str = "Blog Article"):
         """

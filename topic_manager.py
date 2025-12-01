@@ -1,119 +1,144 @@
 #!/usr/bin/env python3
 """
-Topic Manager - Handles topic rotation for daily blog generation
+Topic Manager - Handles topic rotation and date-based scheduling from local file
 """
 
 import os
-from typing import Optional
+from datetime import datetime, date
+from typing import Optional, List, Dict
 
 
 class TopicManager:
-    def __init__(self, topics_file: str = "topics.txt", index_file: str = ".last_topic_index"):
+    def __init__(self, topics_file: str = "topics_schedule.txt"):
         """
         Initialize the Topic Manager
         
         Args:
-            topics_file: Path to file containing topics (one per line)
-            index_file: Path to file storing the last used topic index
+            topics_file: Path to file containing topics with dates (format: YYYY-MM-DD|Topic)
         """
         self.topics_file = topics_file
-        self.index_file = index_file
         self.topics = self._load_topics()
     
-    def _load_topics(self) -> list:
-        """Load topics from the topics file"""
+    def _load_topics(self) -> List[Dict]:
+        """Load topics with dates from the topics file"""
         if not os.path.exists(self.topics_file):
             print(f"⚠️  Topics file '{self.topics_file}' not found.")
             return []
         
         topics = []
         with open(self.topics_file, 'r', encoding='utf-8') as f:
-            for line in f:
+            for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 # Skip empty lines and comments
-                if line and not line.startswith('#'):
-                    topics.append(line)
+                if not line or line.startswith('#'):
+                    continue
+                
+                # Parse date|topic format
+                if '|' in line:
+                    parts = line.split('|', 1)
+                    if len(parts) == 2:
+                        date_str, topic = parts
+                        topics.append({
+                            'date': date_str.strip(),
+                            'topic': topic.strip(),
+                            'line': line_num
+                        })
         
         return topics
     
-    def _get_last_index(self) -> int:
-        """Get the last used topic index"""
-        if not os.path.exists(self.index_file):
-            return -1
-        
-        try:
-            with open(self.index_file, 'r') as f:
-                return int(f.read().strip())
-        except (ValueError, IOError):
-            return -1
-    
-    def _save_index(self, index: int):
-        """Save the current topic index"""
-        with open(self.index_file, 'w') as f:
-            f.write(str(index))
-    
-    def get_next_topic(self) -> Optional[str]:
+    def get_topic_for_date(self, target_date: Optional[date] = None) -> Optional[str]:
         """
-        Get the next topic in rotation
-        First tries Google Sheets (if configured), then falls back to local file
+        Get the topic scheduled for a specific date
+        
+        Args:
+            target_date: Date to get topic for (default: today in UTC)
+            
+        Returns:
+            Topic string, or None if no topic found for the date
+        """
+        if target_date is None:
+            target_date = datetime.utcnow().date()  # Use UTC for GitHub Actions compatibility
+        
+        if not self.topics:
+            return None
+        
+        # Convert target date to string format for comparison
+        target_date_str = target_date.strftime("%Y-%m-%d")
+        
+        # Find topic matching the target date
+        for topic_dict in self.topics:
+            try:
+                topic_date_str = topic_dict['date']
+                
+                # Support multiple date formats
+                for date_format in ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%Y/%m/%d"]:
+                    try:
+                        parsed_date = datetime.strptime(topic_date_str, date_format).date()
+                        if parsed_date == target_date:
+                            print(f"📅 Found topic for {target_date_str}: {topic_dict['topic']}")
+                            return topic_dict['topic']
+                        break
+                    except ValueError:
+                        continue
+            except Exception:
+                continue
+        
+        print(f"⚠️  No topic found for date: {target_date_str}")
+        return None
+    
+    def get_next_available_topic(self) -> Optional[str]:
+        """
+        Get the next available topic (today or next future date)
+        Uses UTC date for GitHub Actions compatibility
         
         Returns:
-            Next topic string, or None if no topics available
+            Topic string, or None if no topics available
         """
-        # Try Google Sheets first
-        try:
-            from sheets_manager import SheetsManager
-            sheets = SheetsManager()
-            
-            if sheets.enabled:
-                topic = sheets.get_next_available_topic()
-                if topic:
-                    return topic
-                else:
-                    print("⚠️  No topics found in Google Sheets, falling back to local file...")
-        except ImportError:
-            print("⚠️  Google Sheets module not available, using local file...")
-        except Exception as e:
-            print(f"⚠️  Error accessing Google Sheets: {str(e)}, falling back to local file...")
-        
-        # Fall back to local file rotation
         if not self.topics:
             print("⚠️  No topics available in topics file.")
             return None
         
-        # Get the last used index and increment
-        last_index = self._get_last_index()
-        next_index = (last_index + 1) % len(self.topics)
+        today = datetime.utcnow().date()  # Use UTC for GitHub Actions
         
-        # Save the new index
-        self._save_index(next_index)
+        # First try to get today's topic
+        today_topic = self.get_topic_for_date(today)
+        if today_topic:
+            return today_topic
         
-        topic = self.topics[next_index]
-        print(f"📝 Selected topic {next_index + 1}/{len(self.topics)}: {topic}")
+        # If no topic for today, find the next future topic
+        future_topics = []
+        for topic_dict in self.topics:
+            try:
+                topic_date_str = topic_dict['date']
+                for date_format in ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%Y/%m/%d"]:
+                    try:
+                        parsed_date = datetime.strptime(topic_date_str, date_format).date()
+                        if parsed_date >= today:
+                            future_topics.append((parsed_date, topic_dict['topic']))
+                        break
+                    except ValueError:
+                        continue
+            except Exception:
+                continue
         
-        return topic
+        if future_topics:
+            # Sort by date and get the earliest
+            future_topics.sort(key=lambda x: x[0])
+            next_date, next_topic = future_topics[0]
+            print(f"📅 Next scheduled topic for {next_date}: {next_topic}")
+            return next_topic
+        
+        print("⚠️  No future topics found")
+        return None
     
-    def get_current_topic(self) -> Optional[str]:
-        """
-        Get the current topic without advancing the index
-        
-        Returns:
-            Current topic string, or None if no topics available
-        """
-        if not self.topics:
-            return None
-        
-        last_index = self._get_last_index()
-        if last_index == -1:
-            return self.topics[0]
-        
-        return self.topics[last_index % len(self.topics)]
+    def get_all_topics(self) -> List[Dict]:
+        """Get all topics with their dates"""
+        return self.topics
     
     def reset(self):
-        """Reset the topic rotation to the beginning"""
-        if os.path.exists(self.index_file):
-            os.remove(self.index_file)
-        print("✓ Topic rotation reset to beginning")
+        """Reload topics from file"""
+        self.topics = self._load_topics()
+        print("✓ Topics reloaded from file")
 
 
 def main():
@@ -125,24 +150,29 @@ def main():
     if len(sys.argv) > 1:
         command = sys.argv[1].lower()
         
-        if command == "next":
-            topic = manager.get_next_topic()
+        if command == "today":
+            topic = manager.get_topic_for_date()
             if topic:
-                print(topic)
-        elif command == "current":
-            topic = manager.get_current_topic()
+                print(f"Today's topic: {topic}")
+            else:
+                print("No topic scheduled for today")
+        elif command == "next":
+            topic = manager.get_next_available_topic()
             if topic:
-                print(f"Current topic: {topic}")
-        elif command == "reset":
-            manager.reset()
+                print(f"Next topic: {topic}")
+        elif command == "list":
+            topics = manager.get_all_topics()
+            print(f"\nAll topics ({len(topics)}):")
+            for t in topics:
+                print(f"  {t['date']}: {t['topic']}")
         else:
-            print("Usage: python topic_manager.py [next|current|reset]")
-            print("  next    - Get next topic and advance rotation")
-            print("  current - Get current topic without advancing")
-            print("  reset   - Reset rotation to beginning")
+            print("Usage: python topic_manager.py [today|next|list]")
+            print("  today - Get today's topic (UTC)")
+            print("  next  - Get next available topic")
+            print("  list  - List all topics")
     else:
-        # Default: get next topic
-        topic = manager.get_next_topic()
+        # Default: get next available topic
+        topic = manager.get_next_available_topic()
         if topic:
             print(topic)
 

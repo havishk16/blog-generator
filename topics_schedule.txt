@@ -1,0 +1,19 @@
+# Blog Topics Schedule
+# Format: YYYY-MM-DD|Topic Title
+# Lines starting with # are ignored
+
+2025-12-01|The Future of Artificial Intelligence in Healthcare
+2025-12-02|Climate Change Solutions for 2025
+2025-12-03|Remote Work Best Practices and Tools
+2025-12-04|Sustainable Living Tips for Urban Dwellers
+2025-12-05|The Rise of Electric Vehicles
+2025-12-06|Mental Health Awareness in the Digital Age
+2025-12-07|Cryptocurrency and Blockchain Technology Explained
+2025-12-08|Healthy Eating Habits for Busy Professionals
+2025-12-09|The Impact of Social Media on Society
+2025-12-10|Renewable Energy Technologies
+2025-12-11|Personal Finance Management Tips
+2025-12-12|The Evolution of E-commerce
+2025-12-13|Cybersecurity Best Practices for Individuals
+2025-12-14|The Benefits of Meditation and Mindfulness
+2025-12-15|Smart Home Technology Trends
