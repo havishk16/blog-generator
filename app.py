@@ -48,6 +48,7 @@ def generate_blog():
     {
         "topic": "string (required)",
         "audience": "string (optional)",
+        "email": "user@example.com (optional)",
         "email_list": ["email1@example.com", "email2@example.com"] (optional)
     }
     """
@@ -83,10 +84,24 @@ def generate_blog():
             s3_url = generator.s3_handler.upload_file(pdf_filename)
         
         # Send emails if requested
-        email_list = data.get('email_list', [])
+        # Start with emails from the request
+        request_emails = data.get('email_list', [])
+        if 'email' in data and data['email']:
+            if isinstance(request_emails, list):
+                request_emails.append(data['email'])
+            else:
+                request_emails = [data['email']]
+        
+        # Load emails from email_list.txt (subscribers)
+        subscriber_emails = generator.load_email_list()
+        
+        # Combine lists (avoiding duplicates)
+        all_recipients = list(set(request_emails + subscriber_emails))
+        
         emails_sent = []
-        if email_list and generator.email_enabled:
-            for email in email_list:
+        if all_recipients and generator.email_enabled:
+            print(f"Sending emails to {len(all_recipients)} recipients...")
+            for email in all_recipients:
                 try:
                     generator.send_email(email, pdf_filename, subject=f"Blog Article: {topic}", s3_url=s3_url)
                     emails_sent.append(email)
