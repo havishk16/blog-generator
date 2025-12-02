@@ -380,7 +380,7 @@ def main():
         # Use topic manager to get next topic
         print("No topic provided, using topic manager...")
         topic_manager = TopicManager()
-        prompt = topic_manager.get_next_topic()
+        prompt = topic_manager.get_next_available_topic()
         
         if not prompt:
             print("Error: No topics available. Please add topics to topics.txt")
