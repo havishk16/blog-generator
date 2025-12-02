@@ -274,7 +274,7 @@ Your requested blog article is ready!
 The PDF is also attached to this email.
 
 Best regards,
-Blog Generator
+EduvateHub
 """
             
             msg.attach(MIMEText(body, 'plain'))
