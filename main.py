@@ -241,67 +241,73 @@ Format the article with markdown-style headings (## for main headings, ### for s
     
     def send_email(self, recipient: str, pdf_path: str, subject: str = "Your Blog Article", s3_url: str = None):
         """
-        Send the PDF via email
+        Send an email with the PDF attachment or S3 link
         
         Args:
-            recipient: Email address of the recipient
-            pdf_path: Path to the PDF file (optional if s3_url is provided)
+            recipient: Email address to send to
+            pdf_path: Path to the PDF file
             subject: Email subject line
-            s3_url: Optional S3 URL for cloud access to the PDF
+            s3_url: Optional S3 URL to include in email body
         """
         if not self.email_enabled:
-            raise RuntimeError("Email sending is disabled because SMTP credentials are missing.")
+            print(f"⚠️  Email not configured, skipping email to {recipient}")
+            return
         
-        msg = MIMEMultipart()
-        msg['From'] = self.email_from
-        msg['To'] = recipient
-        msg['Subject'] = subject
-        
-        # Build email body with optional S3 link
-        pdf_attached = False
-        if s3_url:
-            body = f"Hello,\n\nYour blog article is ready!\n\nYou can access the PDF online at:\n{s3_url}\n"
-        else:
-            body = "Hello,\n\nPlease find attached the blog article you requested.\n"
-        
-        body += "\nBest regards,\nBlog Generator\n"
-        msg.attach(MIMEText(body, 'plain'))
-        
-        # Attach PDF if file exists
-        if os.path.exists(pdf_path):
-            try:
-                with open(pdf_path, 'rb') as attachment:
+        try:
+            # Create message
+            msg = MIMEMultipart()
+            msg['From'] = self.email_from
+            msg['To'] = recipient
+            msg['Subject'] = subject
+            
+            # Email body
+            body = f"""
+Hello,
+
+Your requested blog article is ready!
+
+"""
+            if s3_url:
+                body += f"You can download it from: {s3_url}\n\n"
+            
+            body += """
+The PDF is also attached to this email.
+
+Best regards,
+Blog Generator
+"""
+            
+            msg.attach(MIMEText(body, 'plain'))
+            
+            # Attach PDF
+            if os.path.exists(pdf_path):
+                with open(pdf_path, 'rb') as f:
                     part = MIMEBase('application', 'octet-stream')
-                    part.set_payload(attachment.read())
-                
-                encoders.encode_base64(part)
-                part.add_header(
-                    'Content-Disposition',
-                    f'attachment; filename= {os.path.basename(pdf_path)}'
-                )
-                msg.attach(part)
-                pdf_attached = True
-            except Exception as e:
-                print(f"⚠️  Could not attach PDF file: {str(e)}")
-                if not s3_url:
-                    raise RuntimeError(f"Cannot send email: PDF file not found and no S3 URL available")
-        elif not s3_url:
-            raise RuntimeError(f"Cannot send email: PDF file '{pdf_path}' not found and no S3 URL available")
-        
-        # Send email
-        server = smtplib.SMTP(self.smtp_server, self.smtp_port)
-        server.starttls()
-        server.login(self.email_user, self.email_password)
-        text = msg.as_string()
-        server.sendmail(self.email_from, recipient, text)
-        server.quit()
-        
-        attachment_info = " with PDF attachment" if pdf_attached else " with S3 link"
-        print(f"✓ Email sent successfully to {recipient}{attachment_info}")
+                    part.set_payload(f.read())
+                    encoders.encode_base64(part)
+                    part.add_header('Content-Disposition', f'attachment; filename={os.path.basename(pdf_path)}')
+                    msg.attach(part)
+            
+            # Send email with enhanced debugging
+            print(f"Connecting to SMTP server: {self.smtp_server}:{self.smtp_port}")
+            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+            server.set_debuglevel(1)  # Enable debug output
+            server.starttls()
+            print(f"Logging in as: {self.email_user}")
+            server.login(self.email_user, self.email_password)
+            print(f"Sending email to: {recipient}")
+            server.send_message(msg)
+            server.quit()
+            
+            print(f"✓ Email sent successfully to {recipient}")
+            
+        except Exception as e:
+            print(f"✗ Error sending email to {recipient}: {str(e)}")
+            raise
     
     def process(self, prompt: str, email_list_file: str = "email_list.txt"):
         """
-        Main processing function: generates article, creates PDF, uploads to S3, and sends emails
+        Main processing function: generate article, create PDF, upload to S3, and send emails
         
         Args:
             prompt: The topic/prompt for the blog article

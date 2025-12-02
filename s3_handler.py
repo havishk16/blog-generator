@@ -111,3 +111,35 @@ class S3Handler:
         except ClientError as e:
             print(f"✗ Error generating presigned URL: {str(e)}")
             return None
+    
+    def download_file(self, s3_url: str, local_path: str) -> bool:
+        """
+        Download a file from S3 to local filesystem
+        
+        Args:
+            s3_url: Full S3 URL of the file
+            local_path: Local path where file should be saved
+            
+        Returns:
+            True if download succeeded, False otherwise
+        """
+        if not self.enabled:
+            return False
+        
+        try:
+            # Extract S3 key from URL
+            # Format: https://bucket-name.s3.region.amazonaws.com/key
+            s3_key = s3_url.split(f"{self.bucket_name}.s3.{self.region}.amazonaws.com/")[-1]
+            
+            # Download file
+            self.s3_client.download_file(self.bucket_name, s3_key, local_path)
+            print(f"✓ Downloaded from S3: {s3_key} -> {local_path}")
+            return True
+            
+        except ClientError as e:
+            print(f"✗ Error downloading from S3: {str(e)}")
+            return False
+        except Exception as e:
+            print(f"✗ Unexpected error during S3 download: {str(e)}")
+            return False
+
