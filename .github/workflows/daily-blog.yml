@@ -6,8 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       prompt:
-        description: "Topic/prompt for the blog article"
-        default: "Education trends in Germany"
+        description: "Topic/prompt for the blog article (leave empty to use scheduled topic)"
         required: false
 
 jobs:
