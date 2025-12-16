@@ -49,3 +49,4 @@ Output Format:
 - Meta description (150–160 characters)
 - Fully structured blog following all rules above
 - Format with markdown-style headings (## for main headings, ### for subheadings)
+- Use standard markdown for emphasis (**bold** for strong emphasis, *italic* for subtle emphasis)

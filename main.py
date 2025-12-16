@@ -4,6 +4,7 @@ Blog Generator - Creates blog articles from prompts and emails them as PDFs
 """
 
 import os
+import re
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -194,6 +195,12 @@ Format the article with markdown-style headings (## for main headings, ### for s
             if not line:
                 story.append(Spacer(1, 0.2*inch))
                 continue
+            
+            # Process inline markdown for bold and italic
+            # Bold: **text** -> <b>text</b>
+            line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', line)
+            # Italic: *text* -> <i>text</i>
+            line = re.sub(r'\*(.*?)\*', r'<i>\1</i>', line)
             
             if line.startswith('## '):
                 # Main heading
