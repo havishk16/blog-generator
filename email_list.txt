@@ -1,7 +1,4 @@
 # Add email addresses here, one per line
-havish@fedworks.ai
-rajeev@fedworks.ai
-himaja@fedworks.ai
 havish.kampiri@eduvatehub.com
 rajeev.vundru@eduvatehub.com
 himaja.vallabhaneni@eduvatehub.com
