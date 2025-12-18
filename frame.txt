@@ -45,8 +45,6 @@ SEO Requirements:
 - Maintain reader value over algorithm gaming
 
 Output Format:
-- SEO-optimized headline
-- Meta description (150–160 characters)
+- Start with the topic headline as a bold H1 header (# **Headline**)
 - Fully structured blog following all rules above
 - Format with markdown-style headings (## for main headings, ### for subheadings)
-- Use standard markdown for emphasis (**bold** for strong emphasis, *italic* for subtle emphasis)
